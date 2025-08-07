@@ -15,9 +15,17 @@ fn panic(_info: &PanicInfo) -> ! {                          // ! is the "never" 
     }
 }
 
-#[unsafe(no_mangle)]                    // Ensure compiler keeps the name of this function as "_start" as this is the linker-defined entry point
-pub extern "C" fn _start() -> ! {       // Extern "C" - use the C calling convention for starting point instead of Rust calling convention  
-    loop {
-        
+static HELLO: &[u8] = b"Hello, world!\n"; // Static byte string to hold the message
+
+#[unsafe(no_mangle)]                                 // Ensure compiler keeps the name of this function as "_start" as this is the linker-defined entry point
+pub extern "C" fn _start() -> ! {                    // Extern "C" - use the C calling convention for starting point instead of Rust calling convention  
+    let vga_buffer= 0xb8000 as *mut u8;     // VGA text buffer address in memory, mutable pointer to u8
+    for (i, &byte) in HELLO.iter().enumerate() {
+        unsafe {
+            *vga_buffer.offset(i as isize * 2) = byte;      // ASCII character byte
+            *vga_buffer.offset(i as isize * 2 + 1) = 0xb;   // Color byte - light cyan on black background
+        }
     }
+
+    loop { }
 }
