@@ -3,11 +3,13 @@
 #![feature(custom_test_frameworks)]             // Enable custom test frameworks for our no_std environment
 #![test_runner(crate::test_runner)]             // Define the test runner function to use for running tests
 #![reexport_test_harness_main = "test_main"]    // Since we don't have a main function, rename the test harness entry point to "test_main"
+#![feature(abi_x86_interrupt)]                  // Enable the x86-interrupt calling convention for interrupt handlers
 
 use core::panic::PanicInfo;
 
 pub mod serial;
 pub mod vga_buffer;
+pub mod interrupts;
 
 /// Trait to have test_runner to automatically print testing statements
 pub trait Testable {
@@ -46,8 +48,14 @@ pub fn test_panic_handler(info: &PanicInfo) -> ! {
 #[cfg(test)]
 #[unsafe(no_mangle)]
 pub extern "C" fn _start() -> ! {
+    init();
     test_main();
     loop {}
+}
+
+/// Initialize all components of the OS
+pub fn init() {
+    interrupts::idt_init();
 }
 
 /// Panic handler for test runs - use serial port instead of VGA buffer

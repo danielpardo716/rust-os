@@ -11,11 +11,17 @@ use rust_os::println;
 #[unsafe(no_mangle)]                                 // Ensure compiler keeps the name of this function as "_start" as this is the linker-defined entry point
 pub extern "C" fn _start() -> ! {                    // Extern "C" - use the C calling convention for starting point instead of Rust calling convention  
     println!("Hello World{}", "!");
+
+    rust_os::init();
+
+    // Invoke a breakpoint exception to test the IDT and exception handling
+    x86_64::instructions::interrupts::int3();
     
     // If compiled in test mode, run the tests.
     #[cfg(test)]
     test_main();
 
+    println!("It did not crash!");
     loop { }
 }
 
