@@ -32,3 +32,7 @@ test-timeout = 60               # Timeout in seconds
 [[test]]
 name = "should_panic"
 harness = false         # Disable harness for should_panic test to remove need for test_runner
+
+[[test]]
+name = "stack_overflow"
+harness = false         # Can't return from double fault, so it should run on its own

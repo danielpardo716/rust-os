@@ -10,6 +10,7 @@ use core::panic::PanicInfo;
 pub mod serial;
 pub mod vga_buffer;
 pub mod interrupts;
+pub mod gdt;
 
 /// Trait to have test_runner to automatically print testing statements
 pub trait Testable {
@@ -55,6 +56,7 @@ pub extern "C" fn _start() -> ! {
 
 /// Initialize all components of the OS
 pub fn init() {
+    gdt::init();
     interrupts::idt_init();
 }
 

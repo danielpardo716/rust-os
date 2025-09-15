@@ -13,9 +13,6 @@ pub extern "C" fn _start() -> ! {                    // Extern "C" - use the C c
     println!("Hello World{}", "!");
 
     rust_os::init();
-
-    // Invoke a breakpoint exception to test the IDT and exception handling
-    x86_64::instructions::interrupts::int3();
     
     // If compiled in test mode, run the tests.
     #[cfg(test)]
