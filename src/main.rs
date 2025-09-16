@@ -6,18 +6,32 @@
 // #![warn(missing_docs)]
 
 use core::panic::PanicInfo;
+use bootloader::{entry_point, BootInfo};
 use rust_os::println;
 
-#[unsafe(no_mangle)]                                 // Ensure compiler keeps the name of this function as "_start" as this is the linker-defined entry point
-pub extern "C" fn _start() -> ! {                    // Extern "C" - use the C calling convention for starting point instead of Rust calling convention  
-    println!("Hello World{}", "!");
+entry_point!(kernel_main);               // Define the entry point function for the kernel
 
+/// The entry point for the kernel, called by the bootloader.
+/// entry_point macro ensures the function has the correct signature and creates the underlying extern "C" _start function.
+fn kernel_main(boot_info: &'static BootInfo) -> ! {
+    use rust_os::memory;
+    use x86_64::{VirtAddr, structures::paging::Page};
+
+    println!("Hello World{}", "!");
     rust_os::init();
 
-    use x86_64::registers::control::Cr3;
-    let (level_4_page_table, _) = Cr3::read();
-    println!("Level 4 page table at: {:?}", level_4_page_table.start_address());
+    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
+    let mut mapper = unsafe { memory::init(phys_mem_offset) };
+    let mut frame_allocator = unsafe{ memory::BootInfoFrameAllocator::init(&boot_info.memory_map) };
     
+    // Map an unused page
+    let page = Page::containing_address(VirtAddr::new(0));
+    memory::create_example_mapping(page, &mut mapper, &mut frame_allocator);
+
+    // Write the string "New!" to the screen through the new mapping
+    let page_ptr: *mut u64 = page.start_address().as_mut_ptr();
+    unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e) }; // "New!"
+
     // If compiled in test mode, run the tests.
     #[cfg(test)]
     test_main();
