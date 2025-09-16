@@ -1,6 +1,6 @@
 use crate::{print, println};
-use crate::gdt;
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
+use crate::{gdt, idle_loop};
+use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 use pic8259::ChainedPics;
 use lazy_static::lazy_static;
 use spin;
@@ -53,6 +53,7 @@ lazy_static! {
         };
         idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
         idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
+        idt.page_fault.set_handler_fn(page_fault_handler);
 
         idt
     };
@@ -75,6 +76,19 @@ extern "x86-interrupt" fn breakpoint_handler(stack_frame: InterruptStackFrame)
 extern "x86-interrupt" fn double_fault_handler(stack_frame: InterruptStackFrame, _error_code: u64) -> !
 {
     panic!("EXCEPTION: DOUBLE FAULT\n{:#?}", stack_frame);
+}
+
+/// Page fault exception handler
+/// Occurs when a page fault happens (e.g. accessing a page that is not mapped to physical memory)
+extern "x86-interrupt" fn page_fault_handler(stack_frame: InterruptStackFrame, error_code: PageFaultErrorCode)
+{
+    use x86_64::registers::control::Cr2;
+
+    println!("EXCEPTION: PAGE FAULT");
+    println!("Accessed address: {:?}", Cr2::read());   // CR2 register contains the accessed virtual address that caused the fault
+    println!("Error code: {:?}", error_code);
+    println!("{:#?}", stack_frame);
+    idle_loop();
 }
 
 /// Timer interrupt handler function
