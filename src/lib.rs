@@ -42,7 +42,8 @@ pub fn test_panic_handler(info: &PanicInfo) -> ! {
     serial_println!("[failed]\n");
     serial_println!("Error: {}\n", info);
     exit_qemu(QemuExitCode::Failed);
-    loop {}
+    
+    idle_loop();
 }
 
 /// Entry point for `cargo test`
@@ -51,13 +52,25 @@ pub fn test_panic_handler(info: &PanicInfo) -> ! {
 pub extern "C" fn _start() -> ! {
     init();
     test_main();
-    loop {}
+
+    idle_loop();
 }
 
 /// Initialize all components of the OS
 pub fn init() {
     gdt::init();
     interrupts::idt_init();
+    unsafe {
+        interrupts::PICS.lock().initialize()    // Unsafe - undefined behavior if PIC is misconfigured
+    };
+    x86_64::instructions::interrupts::enable();
+}
+
+/// Idle loop to wait until next interrupt. Causes CPU to enter sleep, consuming less energy.
+pub fn idle_loop() -> ! {
+    loop {
+        x86_64::instructions::hlt();
+    }
 }
 
 /// Panic handler for test runs - use serial port instead of VGA buffer

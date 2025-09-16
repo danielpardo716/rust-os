@@ -19,7 +19,7 @@ pub extern "C" fn _start() -> ! {                    // Extern "C" - use the C c
     test_main();
 
     println!("It did not crash!");
-    loop { }
+    rust_os::idle_loop();
 }
 
 /// Default Panic handler for the application.
@@ -29,10 +29,7 @@ pub extern "C" fn _start() -> ! {                    // Extern "C" - use the C c
 fn panic(info: &PanicInfo) -> ! {           // ! is the "never" type, indicating this function will not return
     // This function is called on panic. Here we simply print the panic info and halt.
     println!("{}", info);
-
-    loop {
-        // Infinite loop to halt the program
-    }
+    rust_os::idle_loop();
 }
 
 /// Panic handler for test runs - use serial port instead of VGA buffer
