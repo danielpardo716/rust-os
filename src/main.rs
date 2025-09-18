@@ -10,7 +10,10 @@ extern crate alloc;
 use core::{panic::PanicInfo};
 use alloc::{boxed::Box, vec, vec::Vec, rc::Rc};
 use bootloader::{entry_point, BootInfo};
-use rust_os::println;
+use rust_os::{
+    println,
+    task::{executor::Executor, keyboard, simple_executor::SimpleExecutor, Task}
+};
 
 entry_point!(kernel_main);               // Define the entry point function for the kernel
 
@@ -48,6 +51,12 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     core::mem::drop(reference_counted);
     println!("reference count is {} now", Rc::strong_count(&cloned_reference));
 
+    // Test our multitasking executor
+    let mut executor = Executor::new();
+    executor.spawn(Task::new(example_task()));
+    executor.spawn(Task::new(keyboard::print_keypresses()));
+    executor.run();
+
     // If compiled in test mode, run the tests.
     #[cfg(test)]
     test_main();
@@ -72,4 +81,13 @@ fn panic(info: &PanicInfo) -> ! {           // ! is the "never" type, indicating
 fn panic(info: &PanicInfo) -> ! {                          // ! is the "never" type, indicating this function will not return
     // Call the library-provided test panic handler
     rust_os::test_panic_handler(info)
+}
+
+async fn async_number() -> u32 {
+    42
+}
+
+async fn example_task() {
+    let number = async_number().await;
+    println!("async number: {}", number);
 }
