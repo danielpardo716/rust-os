@@ -1,16 +1,25 @@
 use x86_64::{
     structures::paging::{
-    mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB,
+        mapper::MapToError, FrameAllocator, Mapper, Page, PageTableFlags, Size4KiB,
     },
     VirtAddr,
 };
-use linked_list_allocator::LockedHeap;
+use spin::Mutex;
+// use bump::BumpAllocator;
+use linked_list::LinkedListAllocator;
+// use fixed_size_block::FixedSizeBlockAllocator;
 
-#[global_allocator]
-static ALLOCATOR: LockedHeap = LockedHeap::empty();
+pub mod bump;
+pub mod linked_list;
+pub mod fixed_size_block;
 
 pub const HEAP_START: usize = 0x_4444_4444_0000;
 pub const HEAP_SIZE: usize = 100 * 1024;            // 100 KiB
+
+#[global_allocator]
+static ALLOCATOR: Locked<LinkedListAllocator> = Locked::new(LinkedListAllocator::new());
+// static ALLOCATOR: Locked<FixedSizeBlockAllocator> = Locked::new(FixedSizeBlockAllocator::new());
+// static ALLOCATOR: Locked<BumpAllocator> = Locked::new(BumpAllocator::new());
 
 /// Initialize the heap by mapping the necessary pages.
 pub fn heap_init(mapper: &mut impl Mapper<Size4KiB>, frame_allocator: &mut impl FrameAllocator<Size4KiB>) -> Result<(), MapToError<Size4KiB>> {
@@ -39,4 +48,26 @@ pub fn heap_init(mapper: &mut impl Mapper<Size4KiB>, frame_allocator: &mut impl 
     }
 
     Ok(())
+}
+
+/// A wrapper around spin::Mutex to permit trait implementations.
+pub struct Locked<A> {
+    inner: Mutex<A>
+}
+
+impl<A> Locked<A> {
+    pub const fn new(inner: A) -> Self {
+        Locked {
+            inner: spin::Mutex::new(inner)
+        }
+    }
+
+    pub fn lock(&self) -> spin::MutexGuard<A> {
+        self.inner.lock()
+    }
+}
+
+/// Align the given address upwards to alignment. Requires that 'align' is a power of 2.
+fn align_up(addr: usize, align: usize) -> usize {
+    (addr + align - 1) & !(align - 1)
 }
